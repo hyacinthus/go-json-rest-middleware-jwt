@@ -90,21 +90,9 @@ func (mw *JWTMiddleware) middlewareImpl(writer rest.ResponseWriter, request *res
 		return
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
-
-	idInterface := claims["id"]
-
-	if idInterface == nil {
-		mw.unauthorized(writer)
-		return
-	}
-
-	id := idInterface.(string)
-
-	request.Env["REMOTE_USER"] = id
 	request.Env["JWT_PAYLOAD"] = token.Claims
 
-	if !mw.Authorizator(id, request) {
+	if !mw.Authorizator("", request) {
 		mw.unauthorized(writer)
 		return
 	}
