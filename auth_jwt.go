@@ -2,6 +2,8 @@
 package jwt
 
 import (
+	"fmt"
+
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/dgrijalva/jwt-go"
 
@@ -53,6 +55,8 @@ type JWTMiddleware struct {
 	// The attributes mentioned on jwt.io can't be used as keys for the map.
 	// Optional, by default no additional data will be set.
 	PayloadFunc func(userId string) map[string]interface{}
+
+	LogFunc func(logMessage string)
 }
 
 // MiddlewareFunc makes JWTMiddleware implement the Middleware interface.
@@ -79,6 +83,12 @@ func (mw *JWTMiddleware) MiddlewareFunc(handler rest.HandlerFunc) rest.HandlerFu
 		}
 	}
 
+	if mw.LogFunc == nil {
+		mw.LogFunc = func(logMessage string) {
+			return
+		}
+	}
+
 	return func(writer rest.ResponseWriter, request *rest.Request) { mw.middlewareImpl(writer, request, handler) }
 }
 
@@ -86,14 +96,14 @@ func (mw *JWTMiddleware) middlewareImpl(writer rest.ResponseWriter, request *res
 	token, err := mw.parseToken(request)
 
 	if err != nil {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, fmt.Sprintf("Failed to parse token: %s", err.Error()))
 		return
 	}
 
 	request.Env["JWT_PAYLOAD"] = token.Claims
 
 	if !mw.Authorizator("", request) {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Failed Authorizator")
 		return
 	}
 
@@ -127,12 +137,12 @@ func (mw *JWTMiddleware) LoginHandler(writer rest.ResponseWriter, request *rest.
 	err := request.DecodeJsonPayload(&loginVals)
 
 	if err != nil {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Failed to decode login values")
 		return
 	}
 
 	if !mw.Authenticator(loginVals.Username, loginVals.Password) {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Authenticator failed")
 		return
 	}
 
@@ -153,7 +163,7 @@ func (mw *JWTMiddleware) LoginHandler(writer rest.ResponseWriter, request *rest.
 	tokenString, err := token.SignedString(mw.Key)
 
 	if err != nil {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Error signing new token")
 		return
 	}
 
@@ -188,7 +198,7 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 
 	// Token should be valid anyway as the RefreshHandler is authed
 	if err != nil {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Token not valid")
 		return
 	}
 
@@ -196,7 +206,7 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 	origIat := int64(originalClaims["orig_iat"].(float64))
 
 	if origIat < time.Now().Add(-mw.MaxRefresh).Unix() {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, "Token too old to refresh")
 		return
 	}
 
@@ -213,14 +223,15 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 	tokenString, err := newToken.SignedString(mw.Key)
 
 	if err != nil {
-		mw.unauthorized(writer)
+		mw.unauthorized(writer, fmt.Sprintf("Error signing new token: %s", err.Error()))
 		return
 	}
 
 	writer.WriteJson(resultToken{Token: tokenString})
 }
 
-func (mw *JWTMiddleware) unauthorized(writer rest.ResponseWriter) {
+func (mw *JWTMiddleware) unauthorized(writer rest.ResponseWriter, logReason string) {
 	writer.Header().Set("WWW-Authenticate", "JWT realm="+mw.Realm)
 	rest.Error(writer, "Not Authorized", http.StatusUnauthorized)
+	mw.LogFunc(logReason)
 }
