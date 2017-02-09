@@ -187,7 +187,7 @@ func (mw *JWTMiddleware) LoginHandler(writer rest.ResponseWriter, request *rest.
 		}
 	}
 
-	_, ok = claims["id"]
+	_, ok := claims["id"]
 	if !ok {
 		claims["id"] = loginVals.Username
 	}
