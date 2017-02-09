@@ -187,7 +187,10 @@ func (mw *JWTMiddleware) LoginHandler(writer rest.ResponseWriter, request *rest.
 		}
 	}
 
-	claims["id"] = loginVals.Username
+	_, ok = claims["id"]
+	if !ok {
+		claims["id"] = loginVals.Username
+	}
 	claims["exp"] = time.Now().Add(mw.Timeout).Unix()
 	if mw.MaxRefresh != 0 {
 		claims["orig_iat"] = time.Now().Unix()
