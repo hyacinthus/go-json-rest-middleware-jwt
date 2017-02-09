@@ -59,7 +59,7 @@ func TestAuthJWT(t *testing.T) {
 
 	// simple request fails
 	recorded := test.RunRequest(t, handler, test.MakeSimpleRequest("GET", "http://localhost/", nil))
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// auth with right cred and wrong method fails
@@ -73,28 +73,28 @@ func TestAuthJWT(t *testing.T) {
 	wrongAuthFormat := test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	wrongAuthFormat.Header.Set("Authorization", "bearer "+makeTokenString("admin", key))
 	recorded = test.RunRequest(t, handler, wrongAuthFormat)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// wrong Auth format - no space after bearer
 	wrongAuthFormat = test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	wrongAuthFormat.Header.Set("Authorization", "bearer"+makeTokenString("admin", key))
 	recorded = test.RunRequest(t, handler, wrongAuthFormat)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// wrong Auth format - empty auth header
 	wrongAuthFormat = test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	wrongAuthFormat.Header.Set("Authorization", "")
 	recorded = test.RunRequest(t, handler, wrongAuthFormat)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// right credt, right method but wrong priv key
 	wrongPrivKeyReq := test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	wrongPrivKeyReq.Header.Set("Authorization", "Bearer "+makeTokenString("admin", []byte("sekret key")))
 	recorded = test.RunRequest(t, handler, wrongPrivKeyReq)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// right credt, right method, right priv key but timeout
@@ -107,7 +107,7 @@ func TestAuthJWT(t *testing.T) {
 	expiredTimestampReq := test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	expiredTimestampReq.Header.Set("Authorization", "Bearer "+tokenString)
 	recorded = test.RunRequest(t, handler, expiredTimestampReq)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// right credt, right method, right priv key but no id
@@ -132,7 +132,7 @@ func TestAuthJWT(t *testing.T) {
 	BadSigningReq := test.MakeSimpleRequest("GET", "http://localhost/", nil)
 	BadSigningReq.Header.Set("Authorization", "Bearer "+tokenBadSigningString)
 	recorded = test.RunRequest(t, handler, BadSigningReq)
-	recorded.CodeIs(401)
+	recorded.CodeIs(400)
 	recorded.ContentTypeIsJson()
 
 	// api for testing success
@@ -189,13 +189,13 @@ func TestAuthJWT(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Received new token with wrong signature", err)
+		t.Error("Received new token with wrong signature", err)
 	}
 
 	newTokenClaims := newToken.Claims.(jwt.MapClaims)
 	if newTokenClaims["id"].(string) != "admin" ||
 		int64(newTokenClaims["exp"].(float64)) < before {
-		t.Errorf("Received new token with wrong data")
+		t.Error("Received new token with wrong data")
 	}
 
 	refreshApi := rest.NewApi()
@@ -240,14 +240,14 @@ func TestAuthJWT(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Received refreshed token with wrong signature", err)
+		t.Error("Received refreshed token with wrong signature", err)
 	}
 
 	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
 	if refreshTokenClaims["id"].(string) != "admin" ||
 		int64(refreshTokenClaims["orig_iat"].(float64)) != refreshableTokenClaims["orig_iat"].(int64) ||
 		int64(refreshTokenClaims["exp"].(float64)) < refreshableTokenClaims["exp"].(int64) {
-		t.Errorf("Received refreshed token with wrong data")
+		t.Error("Received refreshed token with wrong data")
 	}
 }
 
@@ -288,12 +288,12 @@ func TestAuthJWTPayload(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Received new token with wrong signature", err)
+		t.Error("Received new token with wrong signature", err)
 	}
 
 	newTokenClaims := newToken.Claims.(jwt.MapClaims)
 	if newTokenClaims["testkey"].(string) != "testval" || newTokenClaims["exp"].(float64) == 0 {
-		t.Errorf("Received new token without payload")
+		t.Error("Received new token without payload")
 	}
 
 	// correct payload after refresh
@@ -322,12 +322,12 @@ func TestAuthJWTPayload(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Errorf("Received refreshed token with wrong signature", err)
+		t.Error("Received refreshed token with wrong signature", err)
 	}
 
 	refreshTokenClaims := refreshToken.Claims.(jwt.MapClaims)
 	if refreshTokenClaims["testkey"].(string) != "testval" {
-		t.Errorf("Received new token without payload")
+		t.Error("Received new token without payload")
 	}
 
 	// payload is accessible in request
@@ -356,7 +356,7 @@ func TestAuthJWTPayload(t *testing.T) {
 	test.DecodeJsonPayload(recorded.Recorder, &payload)
 
 	if payload["testkey"] != "testval" {
-		t.Errorf("Received new token without payload")
+		t.Error("Received new token without payload")
 	}
 
 }

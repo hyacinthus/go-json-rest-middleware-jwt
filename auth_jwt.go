@@ -116,7 +116,7 @@ func (mw *JWTMiddleware) middlewareImpl(writer rest.ResponseWriter, request *res
 	token, err := mw.parseToken(request)
 
 	if err != nil {
-		mw.unauthorized(writer, fmt.Sprintf("Failed to parse token: %s", err.Error()))
+		mw.badrequest(writer, fmt.Sprintf("Failed to parse token: %s", err.Error()))
 		return
 	}
 
@@ -169,7 +169,7 @@ func (mw *JWTMiddleware) LoginHandler(writer rest.ResponseWriter, request *rest.
 	err := request.DecodeJsonPayload(&loginVals)
 
 	if err != nil {
-		mw.unauthorized(writer, "Failed to decode login values")
+		mw.badrequest(writer, "Failed to decode login values")
 		return
 	}
 
@@ -233,7 +233,7 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 
 	// Token should be valid anyway as the RefreshHandler is authed
 	if err != nil {
-		mw.unauthorized(writer, "Token not valid")
+		mw.badrequest(writer, "Token not valid")
 		return
 	}
 
@@ -268,9 +268,19 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 func (mw *JWTMiddleware) unauthorized(writer rest.ResponseWriter, logReason string) {
 	writer.Header().Set("WWW-Authenticate", "JWT realm="+mw.Realm)
 	var e errorMessageJSON
-	e.Error.Code = "Not Authorized"
+	e.Error.Code = "NotAuthorized"
 	e.Error.Msg = logReason
 	writer.WriteHeader(http.StatusUnauthorized)
+	writer.WriteJson(e)
+	mw.LogFunc(logReason)
+}
+
+func (mw *JWTMiddleware) badrequest(writer rest.ResponseWriter, logReason string) {
+	writer.Header().Set("WWW-Authenticate", "JWT realm="+mw.Realm)
+	var e errorMessageJSON
+	e.Error.Code = "BadRequest"
+	e.Error.Msg = logReason
+	writer.WriteHeader(http.StatusBadRequest)
 	writer.WriteJson(e)
 	mw.LogFunc(logReason)
 }
