@@ -1,0 +1,12 @@
+hash: a223e704324752ee3f2983ed8f24085b109f7211906216e98c9034425eb0ab3e
+updated: 2017-02-09T10:49:50.394119526+08:00
+imports:
+- name: github.com/ant0ine/go-json-rest
+  version: ce4b71cdf7ba29ef443d704bd923f5bbf281ee30
+  subpackages:
+  - rest
+  - rest/test
+  - rest/trie
+- name: github.com/dgrijalva/jwt-go
+  version: d2709f9f1f31ebcda9651b03077758c1f3a0018c
+testImports: []
