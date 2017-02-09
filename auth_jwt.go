@@ -14,6 +14,26 @@ import (
 	"time"
 )
 
+//错误消息结构体
+type errorMessageJSON struct {
+	Error errMsg `json:"error"`
+}
+
+//错误消息结构体
+type errMsg struct {
+	Code string `json:"code"`
+	Msg  string `json:"message"`
+}
+
+//发送错误信息
+func sendError(w rest.ResponseWriter, stat int, errcode string, errmsg string) {
+	var e errorMessageJSON
+	e.Error.Code = errcode
+	e.Error.Msg = errmsg
+	w.WriteHeader(stat)
+	w.WriteJson(e)
+}
+
 // JWTMiddleware provides a Json-Web-Token authentication implementation. On failure, a 401 HTTP response
 // is returned. On success, the wrapped middleware is called, and the userId is made available as
 // request.Env["REMOTE_USER"].(string).
@@ -244,6 +264,10 @@ func (mw *JWTMiddleware) RefreshHandler(writer rest.ResponseWriter, request *res
 
 func (mw *JWTMiddleware) unauthorized(writer rest.ResponseWriter, logReason string) {
 	writer.Header().Set("WWW-Authenticate", "JWT realm="+mw.Realm)
-	rest.Error(writer, "Not Authorized", http.StatusUnauthorized)
+	var e errorMessageJSON
+	e.Error.Code = "Not Authorized"
+	e.Error.Msg = logReason
+	writer.WriteHeader(http.StatusUnauthorized)
+	writer.WriteJson(e)
 	mw.LogFunc(logReason)
 }
